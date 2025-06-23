@@ -105,16 +105,33 @@ if {[string equal [get_filesets -quiet sources_1] ""]} {
   create_fileset -srcset sources_1
 }
 
+# Set IP repository paths
+set obj [get_filesets sources_1]
+set_property "ip_repo_paths" "[file normalize "$origin_dir/ip_repo"]" $obj
+
+# Rebuild user ip_repo's index before adding any source files
+update_ip_catalog -rebuild
+
 # Set 'sources_1' fileset object
 set obj [get_filesets sources_1]
+set files [list \
+ [file normalize "${origin_dir}/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd"] \
+]
+add_files -norecurse -fileset $obj $files
+
 # Set 'sources_1' fileset file properties for remote files
-# None
+set file "$origin_dir/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
+set_property -name "file_type" -value "VHDL" -objects $file_obj
+
 
 # Set 'sources_1' fileset file properties for local files
 # None
 
 # Set 'sources_1' fileset properties
 set obj [get_filesets sources_1]
+set_property -name "top" -value "design_1_wrapper" -objects $obj
 
 # Create 'constrs_1' fileset (if not found)
 if {[string equal [get_filesets -quiet constrs_1] ""]} {
@@ -141,13 +158,23 @@ set obj [get_filesets sim_1]
 
 # Set 'sim_1' fileset properties
 set obj [get_filesets sim_1]
+set_property -name "top" -value "design_1_wrapper" -objects $obj
+set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
 
 
 # Adding sources referenced in BDs, if not already added
+if { [get_files Sine_Wave_Gen.vhd] == "" } {
+  import_files -quiet -fileset sources_1 D:/edu/Hosseinali/FPGA/FPGA_LAB/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd
+}
 
 
 # Proc to create BD design_1
 proc cr_bd_design_1 { parentCell } {
+# The design that will be created by this Tcl proc contains the following 
+# module references:
+# Sine_Wave_Gen
+
+
 
   # CHANGE DESIGN NAME HERE
   set design_name design_1
@@ -163,6 +190,7 @@ proc cr_bd_design_1 { parentCell } {
   set bCheckIPs 1
   if { $bCheckIPs == 1 } {
      set list_check_ips "\ 
+  xilinx.com:ip:proc_sys_reset:5.0\
   xilinx.com:ip:processing_system7:5.5\
   "
 
@@ -182,6 +210,31 @@ proc cr_bd_design_1 { parentCell } {
    }
 
   }
+
+  ##################################################################
+  # CHECK Modules
+  ##################################################################
+  set bCheckModules 1
+  if { $bCheckModules == 1 } {
+     set list_check_mods "\ 
+  Sine_Wave_Gen\
+  "
+
+   set list_mods_missing ""
+   common::send_msg_id "BD_TCL-006" "INFO" "Checking if the following modules exist in the project's sources: $list_check_mods ."
+
+   foreach mod_vlnv $list_check_mods {
+      if { [can_resolve_reference $mod_vlnv] == 0 } {
+         lappend list_mods_missing $mod_vlnv
+      }
+   }
+
+   if { $list_mods_missing ne "" } {
+      catch {common::send_msg_id "BD_TCL-115" "ERROR" "The following module(s) are not found in the project: $list_mods_missing" }
+      common::send_msg_id "BD_TCL-008" "INFO" "Please add source files for the missing module(s) above."
+      set bCheckIPsPassed 0
+   }
+}
 
   if { $bCheckIPsPassed != 1 } {
     common::send_msg_id "BD_TCL-1003" "WARNING" "Will not continue with creation of design due to the error(s) above."
@@ -216,8 +269,27 @@ proc cr_bd_design_1 { parentCell } {
 
 
   # Create interface ports
+  set DDR [ create_bd_intf_port -mode Master -vlnv xilinx.com:interface:ddrx_rtl:1.0 DDR ]
+  set FIXED_IO [ create_bd_intf_port -mode Master -vlnv xilinx.com:display_processing_system7:fixedio_rtl:1.0 FIXED_IO ]
 
   # Create ports
+
+  # Create instance: Sine_Wave_Gen_0, and set properties
+  set block_name Sine_Wave_Gen
+  set block_cell_name Sine_Wave_Gen_0
+  if { [catch {set Sine_Wave_Gen_0 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_msg_id "BD_TCL-105" "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $Sine_Wave_Gen_0 eq "" } {
+     catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+    set_property -dict [ list \
+   CONFIG.DEFAULT_OUTPUT_SIGNAL_FREQUENCY {1000} \
+ ] $Sine_Wave_Gen_0
+
+  # Create instance: proc_sys_reset_0, and set properties
+  set proc_sys_reset_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0 ]
 
   # Create instance: processing_system7_0, and set properties
   set processing_system7_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 processing_system7_0 ]
@@ -1007,7 +1079,7 @@ proc cr_bd_design_1 { parentCell } {
    CONFIG.PCW_USE_EXPANDED_PS_SLCR_REGISTERS {0} \
    CONFIG.PCW_USE_FABRIC_INTERRUPT {0} \
    CONFIG.PCW_USE_HIGH_OCM {0} \
-   CONFIG.PCW_USE_M_AXI_GP0 {1} \
+   CONFIG.PCW_USE_M_AXI_GP0 {0} \
    CONFIG.PCW_USE_M_AXI_GP1 {0} \
    CONFIG.PCW_USE_PROC_EVENT_BUS {0} \
    CONFIG.PCW_USE_PS_SLCR_REGISTERS {0} \
@@ -1027,7 +1099,14 @@ proc cr_bd_design_1 { parentCell } {
    CONFIG.PCW_WDT_PERIPHERAL_FREQMHZ {133.333333} \
  ] $processing_system7_0
 
+  # Create interface connections
+  connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
+  connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
+
   # Create port connections
+  connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ARESETN] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ACLK] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0]
+  connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins proc_sys_reset_0/ext_reset_in] [get_bd_pins processing_system7_0/FCLK_RESET0_N]
 
   # Create address segments
 
@@ -1036,8 +1115,6 @@ proc cr_bd_design_1 { parentCell } {
   current_bd_instance $oldCurInst
 
   save_bd_design
-common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
-
   close_bd_design $design_name 
 }
 # End of cr_bd_design_1()
