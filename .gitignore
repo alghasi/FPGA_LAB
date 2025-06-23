@@ -1,0 +1,3 @@
+vivado_project/*
+# Ignore .vscode folder because we might use vscode for editing only
+*.vscode

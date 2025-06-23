@@ -1,0 +1,10 @@
+# Enforce LF for sensitive files
+*.c     text eol=lf
+*.cpp   text eol=lf
+*.h     text eol=lf
+*.mk    text eol=lf
+*.tcl   text eol=lf
+*.sh    text eol=lf
+
+# Fallback: auto-detect for the rest
+* text=auto

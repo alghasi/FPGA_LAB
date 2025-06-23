@@ -1,0 +1,16 @@
+# Build artifacts
+*.o
+*.a
+*.elf
+*.elf.size
+# Logs and debug
+*.log
+subdir.mk
+*.snap
+*.pdomAdded 
+*.xmi
+*.index
+# Folders related to host workspace and project settings
+/webtalk
+*.metadata
+/RemoteSystemsTempFiles
