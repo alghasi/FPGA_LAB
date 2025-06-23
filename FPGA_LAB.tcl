@@ -116,11 +116,17 @@ update_ip_catalog -rebuild
 set obj [get_filesets sources_1]
 set files [list \
  [file normalize "${origin_dir}/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd"] \
+ [file normalize "${origin_dir}/ip_repo/HDL/UART/pl_src/UART_Tx.vhd"] \
 ]
 add_files -norecurse -fileset $obj $files
 
 # Set 'sources_1' fileset file properties for remote files
 set file "$origin_dir/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
+set_property -name "file_type" -value "VHDL" -objects $file_obj
+
+set file "$origin_dir/ip_repo/HDL/UART/pl_src/UART_Tx.vhd"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "VHDL" -objects $file_obj
@@ -166,13 +172,16 @@ set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
 if { [get_files Sine_Wave_Gen.vhd] == "" } {
   import_files -quiet -fileset sources_1 D:/edu/Hosseinali/FPGA/FPGA_LAB/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd
 }
+if { [get_files UART_Tx.vhd] == "" } {
+  import_files -quiet -fileset sources_1 D:/edu/Hosseinali/FPGA/FPGA_LAB/ip_repo/HDL/UART/pl_src/UART_Tx.vhd
+}
 
 
 # Proc to create BD design_1
 proc cr_bd_design_1 { parentCell } {
 # The design that will be created by this Tcl proc contains the following 
 # module references:
-# Sine_Wave_Gen
+# Sine_Wave_Gen, UART_Tx
 
 
 
@@ -218,6 +227,7 @@ proc cr_bd_design_1 { parentCell } {
   if { $bCheckModules == 1 } {
      set list_check_mods "\ 
   Sine_Wave_Gen\
+  UART_Tx\
   "
 
    set list_mods_missing ""
@@ -288,6 +298,17 @@ proc cr_bd_design_1 { parentCell } {
    CONFIG.DEFAULT_OUTPUT_SIGNAL_FREQUENCY {1000} \
  ] $Sine_Wave_Gen_0
 
+  # Create instance: UART_Tx_0, and set properties
+  set block_name UART_Tx
+  set block_cell_name UART_Tx_0
+  if { [catch {set UART_Tx_0 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_msg_id "BD_TCL-105" "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $UART_Tx_0 eq "" } {
+     catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
   # Create instance: proc_sys_reset_0, and set properties
   set proc_sys_reset_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0 ]
 
@@ -1100,12 +1121,13 @@ proc cr_bd_design_1 { parentCell } {
  ] $processing_system7_0
 
   # Create interface connections
+  connect_bd_intf_net -intf_net Sine_Wave_Gen_0_M_AXIS [get_bd_intf_pins Sine_Wave_Gen_0/M_AXIS] [get_bd_intf_pins UART_Tx_0/S_AXIS]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
 
   # Create port connections
   connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ARESETN] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ACLK] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ACLK] [get_bd_pins UART_Tx_0/clock] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins proc_sys_reset_0/ext_reset_in] [get_bd_pins processing_system7_0/FCLK_RESET0_N]
 
   # Create address segments
@@ -1115,6 +1137,8 @@ proc cr_bd_design_1 { parentCell } {
   current_bd_instance $oldCurInst
 
   save_bd_design
+common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
+
   close_bd_design $design_name 
 }
 # End of cr_bd_design_1()
