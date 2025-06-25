@@ -179,10 +179,10 @@ set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
 
 # Adding sources referenced in BDs, if not already added
 if { [get_files Sine_Wave_Gen.vhd] == "" } {
-  import_files -quiet -fileset sources_1 D:/edu/Hosseinali/FPGA/FPGA_LAB/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd
+  import_files -quiet -fileset sources_1 D:/FPGA_LAB/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd
 }
 if { [get_files UART_Tx.vhd] == "" } {
-  import_files -quiet -fileset sources_1 D:/edu/Hosseinali/FPGA/FPGA_LAB/ip_repo/HDL/UART/pl_src/UART_Tx.vhd
+  import_files -quiet -fileset sources_1 D:/FPGA_LAB/ip_repo/HDL/UART/pl_src/UART_Tx.vhd
 }
 
 
@@ -305,7 +305,7 @@ proc cr_bd_design_1 { parentCell } {
      return 1
    }
     set_property -dict [ list \
-   CONFIG.DEFAULT_OUTPUT_SIGNAL_FREQUENCY {20} \
+   CONFIG.DEFAULT_OUTPUT_SIGNAL_FREQUENCY {1} \
  ] $Sine_Wave_Gen_0
 
   # Create instance: UART_Tx_0, and set properties
@@ -1151,8 +1151,6 @@ proc cr_bd_design_1 { parentCell } {
   current_bd_instance $oldCurInst
 
   save_bd_design
-common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
-
   close_bd_design $design_name 
 }
 # End of cr_bd_design_1()
