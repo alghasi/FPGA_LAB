@@ -181,13 +181,16 @@ set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
 if { [get_files Sine_Wave_Gen.vhd] == "" } {
   import_files -quiet -fileset sources_1 D:/FPGA_LAB/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd
 }
+if { [get_files img_real_to_cmplx.vhd] == "" } {
+  import_files -quiet -fileset sources_1 D:/FPGA_LAB/pl_src/img_real_to_cmplx.vhd
+}
 
 
 # Proc to create BD design_1
 proc cr_bd_design_1 { parentCell } {
 # The design that will be created by this Tcl proc contains the following 
 # module references:
-# Sine_Wave_Gen
+# Sine_Wave_Gen, img_real_to_cmplx
 
 
 
@@ -233,6 +236,7 @@ proc cr_bd_design_1 { parentCell } {
   if { $bCheckModules == 1 } {
      set list_check_mods "\ 
   Sine_Wave_Gen\
+  img_real_to_cmplx\
   "
 
    set list_mods_missing ""
@@ -296,6 +300,17 @@ proc cr_bd_design_1 { parentCell } {
      catch {common::send_msg_id "BD_TCL-105" "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
      return 1
    } elseif { $Sine_Wave_Gen_0 eq "" } {
+     catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
+  # Create instance: img_real_to_cmplx_0, and set properties
+  set block_name img_real_to_cmplx
+  set block_cell_name img_real_to_cmplx_0
+  if { [catch {set img_real_to_cmplx_0 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_msg_id "BD_TCL-105" "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $img_real_to_cmplx_0 eq "" } {
      catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
      return 1
    }
@@ -1112,12 +1127,13 @@ proc cr_bd_design_1 { parentCell } {
  ] $processing_system7_0
 
   # Create interface connections
+  connect_bd_intf_net -intf_net Sine_Wave_Gen_0_M_AXIS [get_bd_intf_pins Sine_Wave_Gen_0/M_AXIS] [get_bd_intf_pins img_real_to_cmplx_0/S_AXIS_IMG]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
 
   # Create port connections
   connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ARESETN] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ACLK] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ACLK] [get_bd_pins img_real_to_cmplx_0/clk] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins proc_sys_reset_0/ext_reset_in] [get_bd_pins processing_system7_0/FCLK_RESET0_N]
 
   # Create address segments
