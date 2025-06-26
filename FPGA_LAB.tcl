@@ -118,6 +118,7 @@ set obj [get_filesets sources_1]
 set files [list \
  [file normalize "${origin_dir}/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd"] \
  [file normalize "${origin_dir}/ip_repo/HDL/UART/pl_src/UART_Tx.vhd"] \
+ [file normalize "${origin_dir}/pl_src/img_real_to_cmplx.vhd"] \
 ]
 add_files -norecurse -fileset $obj $files
 
@@ -128,6 +129,11 @@ set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "VHDL" -objects $file_obj
 
 set file "$origin_dir/ip_repo/HDL/UART/pl_src/UART_Tx.vhd"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
+set_property -name "file_type" -value "VHDL" -objects $file_obj
+
+set file "$origin_dir/pl_src/img_real_to_cmplx.vhd"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "VHDL" -objects $file_obj
@@ -181,16 +187,13 @@ set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
 if { [get_files Sine_Wave_Gen.vhd] == "" } {
   import_files -quiet -fileset sources_1 D:/FPGA_LAB/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd
 }
-if { [get_files UART_Tx.vhd] == "" } {
-  import_files -quiet -fileset sources_1 D:/FPGA_LAB/ip_repo/HDL/UART/pl_src/UART_Tx.vhd
-}
 
 
 # Proc to create BD design_1
 proc cr_bd_design_1 { parentCell } {
 # The design that will be created by this Tcl proc contains the following 
 # module references:
-# Sine_Wave_Gen, UART_Tx
+# Sine_Wave_Gen
 
 
 
@@ -236,7 +239,6 @@ proc cr_bd_design_1 { parentCell } {
   if { $bCheckModules == 1 } {
      set list_check_mods "\ 
   Sine_Wave_Gen\
-  UART_Tx\
   "
 
    set list_mods_missing ""
@@ -292,7 +294,6 @@ proc cr_bd_design_1 { parentCell } {
   set FIXED_IO [ create_bd_intf_port -mode Master -vlnv xilinx.com:display_processing_system7:fixedio_rtl:1.0 FIXED_IO ]
 
   # Create ports
-  set Tx_0 [ create_bd_port -dir O Tx_0 ]
 
   # Create instance: Sine_Wave_Gen_0, and set properties
   set block_name Sine_Wave_Gen
@@ -304,24 +305,7 @@ proc cr_bd_design_1 { parentCell } {
      catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
      return 1
    }
-    set_property -dict [ list \
-   CONFIG.DEFAULT_OUTPUT_SIGNAL_FREQUENCY {1} \
- ] $Sine_Wave_Gen_0
-
-  # Create instance: UART_Tx_0, and set properties
-  set block_name UART_Tx
-  set block_cell_name UART_Tx_0
-  if { [catch {set UART_Tx_0 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
-     catch {common::send_msg_id "BD_TCL-105" "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
-     return 1
-   } elseif { $UART_Tx_0 eq "" } {
-     catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
-     return 1
-   }
-    set_property -dict [ list \
-   CONFIG.BaudRate {300000} \
- ] $UART_Tx_0
-
+  
   # Create instance: proc_sys_reset_0, and set properties
   set proc_sys_reset_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0 ]
 
@@ -1134,14 +1118,12 @@ proc cr_bd_design_1 { parentCell } {
  ] $processing_system7_0
 
   # Create interface connections
-  connect_bd_intf_net -intf_net Sine_Wave_Gen_0_M_AXIS [get_bd_intf_pins Sine_Wave_Gen_0/M_AXIS] [get_bd_intf_pins UART_Tx_0/S_AXIS]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
 
   # Create port connections
-  connect_bd_net -net UART_Tx_0_Tx [get_bd_ports Tx_0] [get_bd_pins UART_Tx_0/Tx]
   connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ARESETN] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ACLK] [get_bd_pins UART_Tx_0/clock] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ACLK] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins proc_sys_reset_0/ext_reset_in] [get_bd_pins processing_system7_0/FCLK_RESET0_N]
 
   # Create address segments
@@ -1151,6 +1133,8 @@ proc cr_bd_design_1 { parentCell } {
   current_bd_instance $oldCurInst
 
   save_bd_design
+common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
+
   close_bd_design $design_name 
 }
 # End of cr_bd_design_1()
@@ -1183,6 +1167,7 @@ if { $obj != "" } {
 
 }
 set obj [get_runs synth_1]
+set_property -name "needs_refresh" -value "1" -objects $obj
 set_property -name "part" -value "xc7z010clg400-1" -objects $obj
 set_property -name "strategy" -value "Vivado Synthesis Defaults" -objects $obj
 
@@ -1385,6 +1370,7 @@ if { $obj != "" } {
 
 }
 set obj [get_runs impl_1]
+set_property -name "needs_refresh" -value "1" -objects $obj
 set_property -name "part" -value "xc7z010clg400-1" -objects $obj
 set_property -name "strategy" -value "Vivado Implementation Defaults" -objects $obj
 set_property -name "steps.write_bitstream.args.readback_file" -value "0" -objects $obj
