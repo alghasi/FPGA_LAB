@@ -298,7 +298,10 @@ proc cr_bd_design_1 { parentCell } {
      catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
      return 1
    }
-  
+    set_property -dict [ list \
+   CONFIG.DEFAULT_Fs {1000000} \
+ ] $Sine_Wave_Gen_0
+
   # Create instance: axis_data_fifo_0, and set properties
   set axis_data_fifo_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:1.1 axis_data_fifo_0 ]
   set_property -dict [ list \
