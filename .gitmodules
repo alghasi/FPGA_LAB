@@ -1,3 +1,6 @@
 [submodule "ip_repo/HDL/Dynamic_Sin_Generator"]
 	path = ip_repo/HDL/Dynamic_Sin_Generator
 	url = https://github.com/iamhosseinali/Dynamic_Sin_Generator.git
+[submodule "ip_repo/HLS/cmplx_magnitude_cal"]
+	path = ip_repo/HLS/cmplx_magnitude_cal
+	url = https://github.com/iamhosseinali/cmplx_magnitude_cal.git
