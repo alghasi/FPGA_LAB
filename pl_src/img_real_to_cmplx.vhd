@@ -30,5 +30,5 @@ architecture Behavioral of img_real_to_cmplx is
 begin
 M_AXIS_CMPLX_tDATA(img_real_tDATA_Width-1 downto 0)                         <= S_AXIS_REAL_tDATA when S_AXIS_REAL_tVALID = '1' else (others=>'0');
 M_AXIS_CMPLX_tDATA(img_real_tDATA_Width*2-1 downto img_real_tDATA_Width)    <= S_AXIS_IMG_tDATA when S_AXIS_IMG_tVALID = '1' else (others=>'0');
-
+M_AXIS_CMPLX_tVALID                                                         <= S_AXIS_REAL_tVALID or S_AXIS_IMG_tVALID;
 end Behavioral;
