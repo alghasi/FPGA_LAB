@@ -117,18 +117,12 @@ update_ip_catalog -rebuild
 set obj [get_filesets sources_1]
 set files [list \
  [file normalize "${origin_dir}/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd"] \
- [file normalize "${origin_dir}/ip_repo/HDL/UART/pl_src/UART_Tx.vhd"] \
  [file normalize "${origin_dir}/pl_src/img_real_to_cmplx.vhd"] \
 ]
 add_files -norecurse -fileset $obj $files
 
 # Set 'sources_1' fileset file properties for remote files
 set file "$origin_dir/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd"
-set file [file normalize $file]
-set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
-set_property -name "file_type" -value "VHDL" -objects $file_obj
-
-set file "$origin_dir/ip_repo/HDL/UART/pl_src/UART_Tx.vhd"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "VHDL" -objects $file_obj
