@@ -118,6 +118,7 @@ set obj [get_filesets sources_1]
 set files [list \
  [file normalize "${origin_dir}/ip_repo/HDL/Dynamic_Sin_Generator/pl_src/Sine_Wave_Gen.vhd"] \
  [file normalize "${origin_dir}/pl_src/img_real_to_cmplx.vhd"] \
+ [file normalize "${origin_dir}/ip_repo/HDL/Mirror_Remover/pl_src/Mirror_Remover.vhd"] \
 ]
 add_files -norecurse -fileset $obj $files
 
@@ -128,6 +129,11 @@ set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "VHDL" -objects $file_obj
 
 set file "$origin_dir/pl_src/img_real_to_cmplx.vhd"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
+set_property -name "file_type" -value "VHDL" -objects $file_obj
+
+set file "$origin_dir/ip_repo/HDL/Mirror_Remover/pl_src/Mirror_Remover.vhd"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "VHDL" -objects $file_obj
@@ -176,13 +182,16 @@ if { [get_files Sine_Wave_Gen.vhd] == "" } {
 if { [get_files img_real_to_cmplx.vhd] == "" } {
   import_files -quiet -fileset sources_1 D:/FPGA_LAB/pl_src/img_real_to_cmplx.vhd
 }
+if { [get_files Mirror_Remover.vhd] == "" } {
+  import_files -quiet -fileset sources_1 D:/FPGA_LAB/ip_repo/HDL/Mirror_Remover/pl_src/Mirror_Remover.vhd
+}
 
 
 # Proc to create BD design_1
 proc cr_bd_design_1 { parentCell } {
 # The design that will be created by this Tcl proc contains the following 
 # module references:
-# Sine_Wave_Gen, img_real_to_cmplx
+# Mirror_Remover, Sine_Wave_Gen, img_real_to_cmplx
 
 
 
@@ -234,6 +243,7 @@ proc cr_bd_design_1 { parentCell } {
   set bCheckModules 1
   if { $bCheckModules == 1 } {
      set list_check_mods "\ 
+  Mirror_Remover\
   Sine_Wave_Gen\
   img_real_to_cmplx\
   "
@@ -292,6 +302,17 @@ proc cr_bd_design_1 { parentCell } {
 
   # Create ports
 
+  # Create instance: Mirror_Remover_0, and set properties
+  set block_name Mirror_Remover
+  set block_cell_name Mirror_Remover_0
+  if { [catch {set Mirror_Remover_0 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_msg_id "BD_TCL-105" "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $Mirror_Remover_0 eq "" } {
+     catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
   # Create instance: Sine_Wave_Gen_0, and set properties
   set block_name Sine_Wave_Gen
   set block_cell_name Sine_Wave_Gen_0
@@ -303,7 +324,7 @@ proc cr_bd_design_1 { parentCell } {
      return 1
    }
     set_property -dict [ list \
-   CONFIG.DEFAULT_Fs {100000000} \
+   CONFIG.DEFAULT_Fs {1000000} \
    CONFIG.DEFAULT_PHASE_STEP {4} \
    CONFIG.Dynamic_Phase_Step {true} \
  ] $Sine_Wave_Gen_0
@@ -311,8 +332,7 @@ proc cr_bd_design_1 { parentCell } {
   # Create instance: axis_data_fifo_0, and set properties
   set axis_data_fifo_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:1.1 axis_data_fifo_0 ]
   set_property -dict [ list \
-   CONFIG.FIFO_DEPTH {4096} \
-   CONFIG.TDATA_NUM_BYTES {4} \
+   CONFIG.FIFO_DEPTH {2048} \
  ] $axis_data_fifo_0
 
   # Create instance: img_real_to_cmplx_0, and set properties
@@ -325,7 +345,10 @@ proc cr_bd_design_1 { parentCell } {
      catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
      return 1
    }
-  
+    set_property -dict [ list \
+   CONFIG.img_real_tDATA_Width {16} \
+ ] $img_real_to_cmplx_0
+
   # Create instance: mag_cal_0, and set properties
   set mag_cal_0 [ create_bd_cell -type ip -vlnv Taksun:hls:mag_cal:1.0 mag_cal_0 ]
 
@@ -1174,13 +1197,15 @@ proc cr_bd_design_1 { parentCell } {
   set xfft_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xfft:9.1 xfft_0 ]
   set_property -dict [ list \
    CONFIG.data_format {fixed_point} \
+   CONFIG.implementation_options {automatically_select} \
    CONFIG.input_width {16} \
-   CONFIG.number_of_stages_using_block_ram_for_data_and_phase_factors {3} \
+   CONFIG.number_of_stages_using_block_ram_for_data_and_phase_factors {0} \
    CONFIG.output_ordering {natural_order} \
    CONFIG.phase_factor_width {8} \
+   CONFIG.rounding_modes {truncation} \
    CONFIG.scaling_options {scaled} \
    CONFIG.target_clock_frequency {100} \
-   CONFIG.target_data_throughput {100} \
+   CONFIG.target_data_throughput {1} \
  ] $xfft_0
 
   # Create instance: xlconcat_0, and set properties
@@ -1212,6 +1237,8 @@ proc cr_bd_design_1 { parentCell } {
   set xlconstant_3 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 xlconstant_3 ]
 
   # Create interface connections
+  connect_bd_intf_net -intf_net Mirror_Remover_0_M_AXIS [get_bd_intf_pins Mirror_Remover_0/M_AXIS] [get_bd_intf_pins mag_cal_0/S_AXIS_V]
+connect_bd_intf_net -intf_net [get_bd_intf_nets Mirror_Remover_0_M_AXIS] [get_bd_intf_pins Mirror_Remover_0/M_AXIS] [get_bd_intf_pins system_ila_0/SLOT_1_AXIS]
   connect_bd_intf_net -intf_net Sine_Wave_Gen_0_M_AXIS [get_bd_intf_pins Sine_Wave_Gen_0/M_AXIS] [get_bd_intf_pins img_real_to_cmplx_0/S_AXIS_REAL]
   connect_bd_intf_net -intf_net axis_data_fifo_0_M_AXIS [get_bd_intf_pins axis_data_fifo_0/M_AXIS] [get_bd_intf_pins xfft_0/S_AXIS_DATA]
 connect_bd_intf_net -intf_net [get_bd_intf_nets axis_data_fifo_0_M_AXIS] [get_bd_intf_pins axis_data_fifo_0/M_AXIS] [get_bd_intf_pins system_ila_0/SLOT_0_AXIS]
@@ -1222,12 +1249,11 @@ HDL_ATTRIBUTE.DEBUG {true} \
 connect_bd_intf_net -intf_net mag_cal_0_M_AXIS [get_bd_intf_pins mag_cal_0/M_AXIS] [get_bd_intf_pins system_ila_0/SLOT_2_AXIS]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
-  connect_bd_intf_net -intf_net xfft_0_M_AXIS_DATA [get_bd_intf_pins mag_cal_0/S_AXIS_V] [get_bd_intf_pins xfft_0/M_AXIS_DATA]
-connect_bd_intf_net -intf_net [get_bd_intf_nets xfft_0_M_AXIS_DATA] [get_bd_intf_pins system_ila_0/SLOT_1_AXIS] [get_bd_intf_pins xfft_0/M_AXIS_DATA]
+  connect_bd_intf_net -intf_net xfft_0_M_AXIS_DATA [get_bd_intf_pins Mirror_Remover_0/S_AXIS] [get_bd_intf_pins xfft_0/M_AXIS_DATA]
 
   # Create port connections
-  connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ARESETN] [get_bd_pins axis_data_fifo_0/s_axis_aresetn] [get_bd_pins mag_cal_0/ap_rst_n] [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins system_ila_0/resetn]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ACLK] [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins img_real_to_cmplx_0/clk] [get_bd_pins mag_cal_0/ap_clk] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins system_ila_0/clk] [get_bd_pins vio_0/clk] [get_bd_pins xfft_0/aclk]
+  connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins Mirror_Remover_0/nRST] [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ARESETN] [get_bd_pins axis_data_fifo_0/s_axis_aresetn] [get_bd_pins mag_cal_0/ap_rst_n] [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins system_ila_0/resetn]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins Mirror_Remover_0/clk] [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ACLK] [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins img_real_to_cmplx_0/clk] [get_bd_pins mag_cal_0/ap_clk] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins system_ila_0/clk] [get_bd_pins vio_0/clk] [get_bd_pins xfft_0/aclk]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins proc_sys_reset_0/ext_reset_in] [get_bd_pins processing_system7_0/FCLK_RESET0_N]
   connect_bd_net -net vio_0_probe_out0 [get_bd_pins vio_0/probe_out0] [get_bd_pins xlconcat_0/In0]
   connect_bd_net -net xlconcat_0_dout [get_bd_pins Sine_Wave_Gen_0/PHASE_STEP_CONF] [get_bd_pins xlconcat_0/dout]
@@ -1243,6 +1269,8 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets xfft_0_M_AXIS_DATA] [get_bd_intf
   current_bd_instance $oldCurInst
 
   save_bd_design
+common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
+
   close_bd_design $design_name 
 }
 # End of cr_bd_design_1()
@@ -1275,6 +1303,7 @@ if { $obj != "" } {
 
 }
 set obj [get_runs synth_1]
+set_property -name "needs_refresh" -value "1" -objects $obj
 set_property -name "part" -value "xc7z010clg400-1" -objects $obj
 set_property -name "strategy" -value "Vivado Synthesis Defaults" -objects $obj
 
@@ -1477,6 +1506,7 @@ if { $obj != "" } {
 
 }
 set obj [get_runs impl_1]
+set_property -name "needs_refresh" -value "1" -objects $obj
 set_property -name "part" -value "xc7z010clg400-1" -objects $obj
 set_property -name "strategy" -value "Vivado Implementation Defaults" -objects $obj
 set_property -name "steps.write_bitstream.args.readback_file" -value "0" -objects $obj
