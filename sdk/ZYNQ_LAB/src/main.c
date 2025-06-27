@@ -95,6 +95,7 @@ ip_addr_t DEST_IP_ADDR;
 u8 *TxBufferPtr;
 u32 rcv_data;
 const char START_COMMAND[] = "StartLog";
+const char STOP_COMMAND[] = "StopLog";
 u8 WRONG_RE[]={"WRONG COMMAND!"};
 
 
@@ -164,6 +165,12 @@ static void udp_recv_perf_traffic(void *arg, struct udp_pcb *tpcb,
 	/* START_COMMAND */
 	if((p_rcv->len >= strlen(START_COMMAND)) &&
 			memcmp(TxBufferPtr,START_COMMAND,strlen(START_COMMAND)) == 0)
+	{
+		recv_data_ready = 1;
+	}
+	/* STOP_COMMAND */
+	else if((p_rcv->len >= strlen(STOP_COMMAND)) &&
+			memcmp(TxBufferPtr,STOP_COMMAND,strlen(STOP_COMMAND)) == 0)
 	{
 		recv_data_ready = 1;
 	}
