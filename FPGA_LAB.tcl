@@ -1237,8 +1237,7 @@ proc cr_bd_design_1 { parentCell } {
   set xlconstant_3 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 xlconstant_3 ]
 
   # Create interface connections
-  connect_bd_intf_net -intf_net Mirror_Remover_0_M_AXIS [get_bd_intf_pins Mirror_Remover_0/M_AXIS] [get_bd_intf_pins mag_cal_0/S_AXIS_V]
-connect_bd_intf_net -intf_net [get_bd_intf_nets Mirror_Remover_0_M_AXIS] [get_bd_intf_pins Mirror_Remover_0/M_AXIS] [get_bd_intf_pins system_ila_0/SLOT_1_AXIS]
+connect_bd_intf_net -intf_net Mirror_Remover_0_M_AXIS [get_bd_intf_pins Mirror_Remover_0/M_AXIS] [get_bd_intf_pins system_ila_0/SLOT_2_AXIS]
   connect_bd_intf_net -intf_net Sine_Wave_Gen_0_M_AXIS [get_bd_intf_pins Sine_Wave_Gen_0/M_AXIS] [get_bd_intf_pins img_real_to_cmplx_0/S_AXIS_REAL]
   connect_bd_intf_net -intf_net axis_data_fifo_0_M_AXIS [get_bd_intf_pins axis_data_fifo_0/M_AXIS] [get_bd_intf_pins xfft_0/S_AXIS_DATA]
 connect_bd_intf_net -intf_net [get_bd_intf_nets axis_data_fifo_0_M_AXIS] [get_bd_intf_pins axis_data_fifo_0/M_AXIS] [get_bd_intf_pins system_ila_0/SLOT_0_AXIS]
@@ -1246,10 +1245,11 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets axis_data_fifo_0_M_AXIS] [get_bd
 HDL_ATTRIBUTE.DEBUG {true} \
  ] [get_bd_intf_nets axis_data_fifo_0_M_AXIS]
   connect_bd_intf_net -intf_net img_real_to_cmplx_0_M_AXIS_CMPLX [get_bd_intf_pins axis_data_fifo_0/S_AXIS] [get_bd_intf_pins img_real_to_cmplx_0/M_AXIS_CMPLX]
-connect_bd_intf_net -intf_net mag_cal_0_M_AXIS [get_bd_intf_pins mag_cal_0/M_AXIS] [get_bd_intf_pins system_ila_0/SLOT_2_AXIS]
+  connect_bd_intf_net -intf_net mag_cal_0_M_AXIS [get_bd_intf_pins Mirror_Remover_0/S_AXIS] [get_bd_intf_pins mag_cal_0/M_AXIS]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
-  connect_bd_intf_net -intf_net xfft_0_M_AXIS_DATA [get_bd_intf_pins Mirror_Remover_0/S_AXIS] [get_bd_intf_pins xfft_0/M_AXIS_DATA]
+  connect_bd_intf_net -intf_net xfft_0_M_AXIS_DATA [get_bd_intf_pins mag_cal_0/S_AXIS_V] [get_bd_intf_pins xfft_0/M_AXIS_DATA]
+connect_bd_intf_net -intf_net [get_bd_intf_nets xfft_0_M_AXIS_DATA] [get_bd_intf_pins system_ila_0/SLOT_1_AXIS] [get_bd_intf_pins xfft_0/M_AXIS_DATA]
 
   # Create port connections
   connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins Mirror_Remover_0/nRST] [get_bd_pins Sine_Wave_Gen_0/M_AXIS_ARESETN] [get_bd_pins axis_data_fifo_0/s_axis_aresetn] [get_bd_pins mag_cal_0/ap_rst_n] [get_bd_pins proc_sys_reset_0/peripheral_aresetn] [get_bd_pins system_ila_0/resetn]
@@ -1269,8 +1269,6 @@ connect_bd_intf_net -intf_net mag_cal_0_M_AXIS [get_bd_intf_pins mag_cal_0/M_AXI
   current_bd_instance $oldCurInst
 
   save_bd_design
-common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
-
   close_bd_design $design_name 
 }
 # End of cr_bd_design_1()
@@ -1303,7 +1301,6 @@ if { $obj != "" } {
 
 }
 set obj [get_runs synth_1]
-set_property -name "needs_refresh" -value "1" -objects $obj
 set_property -name "part" -value "xc7z010clg400-1" -objects $obj
 set_property -name "strategy" -value "Vivado Synthesis Defaults" -objects $obj
 
@@ -1506,7 +1503,6 @@ if { $obj != "" } {
 
 }
 set obj [get_runs impl_1]
-set_property -name "needs_refresh" -value "1" -objects $obj
 set_property -name "part" -value "xc7z010clg400-1" -objects $obj
 set_property -name "strategy" -value "Vivado Implementation Defaults" -objects $obj
 set_property -name "steps.write_bitstream.args.readback_file" -value "0" -objects $obj
