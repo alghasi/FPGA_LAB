@@ -18,8 +18,8 @@
 *
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-* XILINX BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* XILINX CONSORTIUM BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 * OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
@@ -45,13 +45,12 @@
 *   about the detected PHYs. The array phymapemac0 is used for Emac0 and
 *   phymapemac1 is for Emac1.
 * - The users need to parse the corresponding arrays, phymapemac0 or phymapemac1
-*   to know the available PHYs for a MAC. The users then need to call
-*   phy_setup_emacps to setup the PHYs for proper speed setting. The API
-*   phy_setup_emacps should be called with the PHY address for which the speed
-*   needs to be negotiated or configured. In a specific use case, if 2 PHYs are
-*   connected to Emac0 with addresses of 7 and 11, then users get these address
-*   details from phymapemac0 (after calling detect_phy) and then call
-*   phy_setup_emacps twice, with ab address of 7 and 11.
+*   to know the available PHYs for a MAC. The users then need to call phy_setup
+*   to setup the PHYs for proper speed setting. The API phy_setup should be called
+*   with the PHY address for which the speed needs to be negotiated or configured.
+*   In a specific use case, if 2 PHYs are connected to Emac0 with addresses of 7
+*   and 11, then users get these address details from phymapemac0 (after calling
+*   detect_phy) and then call phy_setup twice, with ab address of 7 and 11.
 * - Points to note: The MAC can operate at only one speed. If a MAC is connected
 *   to multiple PHYs, then all PHYs must negotiate and configured for the same
 *   speed.
@@ -110,13 +109,52 @@
 #include "netif/xemacpsif.h"
 #include "lwipopts.h"
 #include "xparameters_ps.h"
-#include "xparameters.h"
-#include "xemac_ieee_reg.h"
+//#include "xparameters.h"
 
 #if defined (__aarch64__)
 #include "bspconfig.h"
 #include "xil_smc.h"
 #endif
+
+/* Advertisement control register. */
+#define ADVERTISE_10HALF		0x0020  /* Try for 10mbps half-duplex  */
+#define ADVERTISE_10FULL		0x0040  /* Try for 10mbps full-duplex  */
+#define ADVERTISE_100HALF		0x0080  /* Try for 100mbps half-duplex */
+#define ADVERTISE_100FULL		0x0100  /* Try for 100mbps full-duplex */
+
+#define ADVERTISE_100			(ADVERTISE_100FULL | ADVERTISE_100HALF)
+#define ADVERTISE_10			(ADVERTISE_10FULL | ADVERTISE_10HALF)
+#define ADVERTISE_1000			0x0300
+
+#define IEEE_CONTROL_REG_OFFSET				0
+#define IEEE_STATUS_REG_OFFSET				1
+#define IEEE_AUTONEGO_ADVERTISE_REG			4
+#define IEEE_PARTNER_ABILITIES_1_REG_OFFSET	5
+#define IEEE_1000_ADVERTISE_REG_OFFSET		9
+#define IEEE_COPPER_SPECIFIC_CONTROL_REG	16
+#define IEEE_SPECIFIC_STATUS_REG			17
+#define IEEE_COPPER_SPECIFIC_STATUS_REG_2	19
+#define IEEE_CONTROL_REG_MAC				21
+#define IEEE_PAGE_ADDRESS_REGISTER			22
+#define IEEE_CTRL_1GBPS_LINKSPEED_MASK		0x2040
+#define IEEE_CTRL_LINKSPEED_MASK			0x0040
+#define IEEE_CTRL_LINKSPEED_1000M			0x0040
+#define IEEE_CTRL_LINKSPEED_100M			0x2000
+#define IEEE_CTRL_LINKSPEED_10M				0x0000
+#define IEEE_CTRL_RESET_MASK				0x8000
+
+#define IEEE_SPEED_MASK		0xC000
+#define IEEE_SPEED_1000		0x8000
+#define IEEE_SPEED_100		0x4000
+
+#define IEEE_CTRL_RESET_MASK				0x8000
+#define IEEE_CTRL_AUTONEGOTIATE_ENABLE		0x1000
+#define IEEE_STAT_AUTONEGOTIATE_COMPLETE	0x0020
+#define IEEE_STAT_AUTONEGOTIATE_RESTART		0x0200
+#define IEEE_RGMII_TXRX_CLOCK_DELAYED_MASK	0x0030
+#define IEEE_ASYMMETRIC_PAUSE_MASK			0x0800
+#define IEEE_PAUSE_MASK						0x0400
+#define IEEE_AUTONEG_ERROR_MASK				0x8000
 
 #define PHY_DETECT_REG  						1
 #define PHY_IDENTIFIER_1_REG					2
@@ -124,9 +162,20 @@
 #define PHY_DETECT_MASK 					0x1808
 #define PHY_MARVELL_IDENTIFIER				0x0141
 #define PHY_TI_IDENTIFIER					0x2000
-#define PHY_REALTEK_IDENTIFIER				0x001c
 #define PHY_XILINX_PCS_PMA_ID1			0x0174
 #define PHY_XILINX_PCS_PMA_ID2			0x0C00
+
+#define MICREL_PHY_IDENTIFIER                   0x22
+#define MICREL_PHY_KSZ9031_MODEL				0x220
+
+#define JLSEMI_IDENTIFIER 0x937C
+#define JLSEMI_PHY_SELECT_REG_OFFSET	0x1F
+#define JLSEMI_PHY_SPECIFIC_STATUS_REG_OFFSET	0x1A
+#define JLSEMI_PHY_SPECIFIC_PAGE	0xA43
+#define JLSEMI_PHY_LCR_PAGE	0xD04
+#define JLSEMI_PHY_LED_BLINK_PAGE	0x1000
+#define JLSEMI_PHY_LED_CONTROL_REG_OFFSET 0x10
+#define JLSEMI_PHY_LED_BLINK_REG_OFFSET 0x14
 
 #define XEMACPS_GMII2RGMII_SPEED1000_FD		0x140
 #define XEMACPS_GMII2RGMII_SPEED100_FD		0x2100
@@ -182,7 +231,7 @@ static u32_t configure_IEEE_phy_speed(XEmacPs *xemacpsp, u32_t phy_addr, u32_t s
 #endif
 
 #ifdef PCM_PMA_CORE_PRESENT
-u32_t phy_setup_emacps (XEmacPs *xemacpsp, u32_t phy_addr)
+u32_t phy_setup (XEmacPs *xemacpsp, u32_t phy_addr)
 {
 	u32_t link_speed;
 	u16_t regval;
@@ -307,15 +356,14 @@ void detect_phy(XEmacPs *xemacpsp)
 			XEmacPs_PhyRead(xemacpsp, phy_addr, PHY_IDENTIFIER_1_REG,
 							&phy_reg);
 			if ((phy_reg != PHY_MARVELL_IDENTIFIER) &&
-				(phy_reg != PHY_TI_IDENTIFIER) &&
-				(phy_reg != PHY_REALTEK_IDENTIFIER)) {
-				xil_printf("WARNING: Not a Marvell or TI or Realtek Ethernet PHY. Please verify the initialization sequence\r\n");
+				(phy_reg != PHY_TI_IDENTIFIER)) {
+				xil_printf("WARNING: Not a Marvell or TI Ethernet PHY. Please verify the initialization sequence\r\n");
 			}
 		}
 	}
 }
 
-u32_t phy_setup_emacps (XEmacPs *xemacpsp, u32_t phy_addr)
+u32_t phy_setup (XEmacPs *xemacpsp, u32_t phy_addr)
 {
 	u32_t link_speed;
 	u32_t conv_present = 0;
@@ -606,16 +654,24 @@ static u32_t get_Marvell_phy_speed(XEmacPs *xemacpsp, u32_t phy_addr)
 
 	return XST_SUCCESS;
 }
-
-static u32_t get_Realtek_phy_speed(XEmacPs *xemacpsp, u32_t phy_addr)
+static u32_t get_phy_speed_ksz9031(XEmacPs *xemacpsp, u32_t phy_addr)
 {
+	u16_t temp;
 	u16_t control;
 	u16_t status;
 	u16_t status_speed;
 	u32_t timeout_counter = 0;
-	u32_t temp_speed;
+//	u32_t temp_speed;
+//	u32_t phyregtemp;
 
 	xil_printf("Start PHY autonegotiation \r\n");
+
+	XEmacPs_PhyWrite(xemacpsp,phy_addr, IEEE_PAGE_ADDRESS_REGISTER, 2);
+	XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_CONTROL_REG_MAC, &control);
+	control |= IEEE_RGMII_TXRX_CLOCK_DELAYED_MASK;
+	XEmacPs_PhyWrite(xemacpsp, phy_addr, IEEE_CONTROL_REG_MAC, control);
+
+	XEmacPs_PhyWrite(xemacpsp, phy_addr, IEEE_PAGE_ADDRESS_REGISTER, 0);
 
 	XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_AUTONEGO_ADVERTISE_REG, &control);
 	control |= IEEE_ASYMMETRIC_PAUSE_MASK;
@@ -630,6 +686,13 @@ static u32_t get_Realtek_phy_speed(XEmacPs *xemacpsp, u32_t phy_addr)
 	XEmacPs_PhyWrite(xemacpsp, phy_addr, IEEE_1000_ADVERTISE_REG_OFFSET,
 					control);
 
+	XEmacPs_PhyWrite(xemacpsp, phy_addr, IEEE_PAGE_ADDRESS_REGISTER, 0);
+	XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_COPPER_SPECIFIC_CONTROL_REG,
+																&control);
+	control |= (7 << 12);	/* max number of gigabit attempts */
+	control |= (1 << 11);	/* enable downshift */
+	XEmacPs_PhyWrite(xemacpsp, phy_addr, IEEE_COPPER_SPECIFIC_CONTROL_REG,
+																control);
 	XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_CONTROL_REG_OFFSET, &control);
 	control |= IEEE_CTRL_AUTONEGOTIATE_ENABLE;
 	control |= IEEE_STAT_AUTONEGOTIATE_RESTART;
@@ -653,32 +716,119 @@ static u32_t get_Realtek_phy_speed(XEmacPs *xemacpsp, u32_t phy_addr)
 
 	while ( !(status & IEEE_STAT_AUTONEGOTIATE_COMPLETE) ) {
 		sleep(1);
+		XEmacPs_PhyRead(xemacpsp, phy_addr,
+						IEEE_COPPER_SPECIFIC_STATUS_REG_2,  &temp);
 		timeout_counter++;
 
 		if (timeout_counter == 30) {
 			xil_printf("Auto negotiation error \r\n");
-			return XST_FAILURE;
+			return;
 		}
 		XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_STATUS_REG_OFFSET, &status);
 	}
 	xil_printf("autonegotiation complete \r\n");
 
-	XEmacPs_PhyRead(xemacpsp, phy_addr,IEEE_SPECIFIC_STATUS_REG,
+	XEmacPs_PhyRead(xemacpsp, phy_addr,0x1f,
 					&status_speed);
-	if (status_speed & 0x400) {
-		temp_speed = status_speed & IEEE_SPEED_MASK;
 
-		if (temp_speed == IEEE_SPEED_1000)
-			return 1000;
-		else if(temp_speed == IEEE_SPEED_100)
-			return 100;
-		else
-			return 10;
-	}
-
-	return XST_FAILURE;
+	if ( (status_speed & 0x40) == 0x40)/* 1000Mbps */
+		return 1000;
+	else if ( (status_speed & 0x20) == 0x20)/* 100Mbps */
+		return 100;
+	else if ( (status_speed & 0x10) == 0x10)/* 10Mbps */
+		return 10;
+	else
+		return 0;
+	return XST_SUCCESS;
 }
 
+static u32_t get_phy_speed_JL2121(XEmacPs *xemacpsp, u32_t phy_addr)
+{
+//	u16_t temp;
+	u16_t control;
+	u16_t status;
+	u16_t status_speed;
+	u32_t timeout_counter = 0;
+//	u32_t temp_speed;
+//	u32_t phyregtemp;
+
+	xil_printf("phy is JL2121!\r\n");
+
+
+	xil_printf("Start PHY autonegotiation \r\n");
+
+	XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_CONTROL_REG_OFFSET, &control);
+	control |= IEEE_CTRL_RESET_MASK;
+	XEmacPs_PhyWrite(xemacpsp, phy_addr, IEEE_CONTROL_REG_OFFSET, control);
+	
+	usleep(10000);
+
+	XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_AUTONEGO_ADVERTISE_REG, &control);
+	control |= IEEE_ASYMMETRIC_PAUSE_MASK;
+	control |= IEEE_PAUSE_MASK;
+	control |= ADVERTISE_100;
+	control |= ADVERTISE_10;
+	XEmacPs_PhyWrite(xemacpsp, phy_addr, IEEE_AUTONEGO_ADVERTISE_REG, control);
+
+	XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_1000_ADVERTISE_REG_OFFSET,
+					&control);
+	control |= ADVERTISE_1000;
+	XEmacPs_PhyWrite(xemacpsp, phy_addr, IEEE_1000_ADVERTISE_REG_OFFSET,
+					control);
+
+	XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_CONTROL_REG_OFFSET, &control);
+	control |= IEEE_CTRL_AUTONEGOTIATE_ENABLE;
+	control |= IEEE_STAT_AUTONEGOTIATE_RESTART;
+	XEmacPs_PhyWrite(xemacpsp, phy_addr, IEEE_CONTROL_REG_OFFSET, control);
+
+
+
+	while (1) {
+		XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_CONTROL_REG_OFFSET, &control);
+		if (control & IEEE_CTRL_RESET_MASK)
+			continue;
+		else
+			break;
+	}
+
+	XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_STATUS_REG_OFFSET, &status);
+
+	xil_printf("Waiting for PHY to complete autonegotiation.\r\n");
+
+	while ( !(status & IEEE_STAT_AUTONEGOTIATE_COMPLETE) ) {
+		sleep(1);
+
+		timeout_counter++;
+
+		if (timeout_counter == 30) {
+			xil_printf("Auto negotiation error \r\n");
+			return;
+		}
+		XEmacPs_PhyRead(xemacpsp, phy_addr, IEEE_STATUS_REG_OFFSET, &status);
+	}
+	xil_printf("autonegotiation complete \r\n");
+
+
+	XEmacPs_PhyWrite(xemacpsp, phy_addr,JLSEMI_PHY_SELECT_REG_OFFSET,JLSEMI_PHY_SPECIFIC_PAGE);
+	XEmacPs_PhyRead(xemacpsp,  phy_addr, JLSEMI_PHY_SPECIFIC_STATUS_REG_OFFSET, &status_speed);
+	
+	XEmacPs_PhyWrite(xemacpsp, phy_addr,JLSEMI_PHY_SELECT_REG_OFFSET,JLSEMI_PHY_LCR_PAGE);
+	XEmacPs_PhyWrite(xemacpsp, phy_addr,JLSEMI_PHY_LED_CONTROL_REG_OFFSET,0xAE01);
+
+	XEmacPs_PhyWrite(xemacpsp, phy_addr,JLSEMI_PHY_SELECT_REG_OFFSET,JLSEMI_PHY_LED_BLINK_PAGE);
+	XEmacPs_PhyWrite(xemacpsp, phy_addr,JLSEMI_PHY_LED_BLINK_REG_OFFSET,0x0704);
+	XEmacPs_PhyWrite(xemacpsp, phy_addr,JLSEMI_PHY_SELECT_REG_OFFSET,0);
+
+	if ( (status_speed & 0x20) == 0x20)/* 1000Mbps */
+		return 1000;
+	else if ( (status_speed & 0x10) == 0x10)/* 100Mbps */
+		return 100;
+	else if ( (status_speed & 0x30) == 0x0)/* 10Mbps */
+		return 10;
+	else
+		return 0;
+	return XST_SUCCESS;
+}
 static u32_t get_IEEE_phy_speed(XEmacPs *xemacpsp, u32_t phy_addr)
 {
 	u16_t phy_identity;
@@ -686,10 +836,14 @@ static u32_t get_IEEE_phy_speed(XEmacPs *xemacpsp, u32_t phy_addr)
 
 	XEmacPs_PhyRead(xemacpsp, phy_addr, PHY_IDENTIFIER_1_REG,
 					&phy_identity);
-	if (phy_identity == PHY_TI_IDENTIFIER) {
+	if(phy_identity == MICREL_PHY_IDENTIFIER)
+	{
+		RetStatus = get_phy_speed_ksz9031(xemacpsp, phy_addr);
+	}else if (phy_identity == JLSEMI_IDENTIFIER) {
+		RetStatus = get_phy_speed_JL2121(xemacpsp, phy_addr);
+	}
+	else if (phy_identity == PHY_TI_IDENTIFIER) {
 		RetStatus = get_TI_phy_speed(xemacpsp, phy_addr);
-	} else if (phy_identity == PHY_REALTEK_IDENTIFIER) {
-		RetStatus = get_Realtek_phy_speed(xemacpsp, phy_addr);
 	} else {
 		RetStatus = get_Marvell_phy_speed(xemacpsp, phy_addr);
 	}

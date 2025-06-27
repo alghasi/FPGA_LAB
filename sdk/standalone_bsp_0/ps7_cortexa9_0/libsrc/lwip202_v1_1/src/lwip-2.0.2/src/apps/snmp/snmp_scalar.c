@@ -42,14 +42,14 @@
 #include "lwip/apps/snmp_scalar.h"
 #include "lwip/apps/snmp_core.h"
 
-static s16_t snmp_scalar_array_get_value(struct snmp_node_instance* instance, void* value);
-static snmp_err_t  snmp_scalar_array_set_test(struct snmp_node_instance* instance, u16_t value_len, void* value);
-static snmp_err_t  snmp_scalar_array_set_value(struct snmp_node_instance* instance, u16_t value_len, void* value);
+static s16_t snmp_scalar_array_get_value(struct snmp_node_instance *instance, void *value);
+static snmp_err_t  snmp_scalar_array_set_test(struct snmp_node_instance *instance, u16_t value_len, void *value);
+static snmp_err_t  snmp_scalar_array_set_value(struct snmp_node_instance *instance, u16_t value_len, void *value);
 
 snmp_err_t
-snmp_scalar_get_instance(const u32_t *root_oid, u8_t root_oid_len, struct snmp_node_instance* instance)
+snmp_scalar_get_instance(const u32_t *root_oid, u8_t root_oid_len, struct snmp_node_instance *instance)
 {
-  const struct snmp_scalar_node* scalar_node = (const struct snmp_scalar_node*)(const void*)instance->node;
+  const struct snmp_scalar_node *scalar_node = (const struct snmp_scalar_node *)(const void *)instance->node;
 
   LWIP_UNUSED_ARG(root_oid);
   LWIP_UNUSED_ARG(root_oid_len);
@@ -68,7 +68,7 @@ snmp_scalar_get_instance(const u32_t *root_oid, u8_t root_oid_len, struct snmp_n
 }
 
 snmp_err_t
-snmp_scalar_get_next_instance(const u32_t *root_oid, u8_t root_oid_len, struct snmp_node_instance* instance)
+snmp_scalar_get_next_instance(const u32_t *root_oid, u8_t root_oid_len, struct snmp_node_instance *instance)
 {
   /* because our only instance is .0 we can only return a next instance if no instance oid is passed */
   if (instance->instance_oid.len == 0) {
@@ -83,14 +83,14 @@ snmp_scalar_get_next_instance(const u32_t *root_oid, u8_t root_oid_len, struct s
 
 
 snmp_err_t
-snmp_scalar_array_get_instance(const u32_t *root_oid, u8_t root_oid_len, struct snmp_node_instance* instance)
+snmp_scalar_array_get_instance(const u32_t *root_oid, u8_t root_oid_len, struct snmp_node_instance *instance)
 {
   LWIP_UNUSED_ARG(root_oid);
   LWIP_UNUSED_ARG(root_oid_len);
 
   if ((instance->instance_oid.len == 2) && (instance->instance_oid.id[1] == 0)) {
-    const struct snmp_scalar_array_node* array_node = (const struct snmp_scalar_array_node*)(const void*)instance->node;
-    const struct snmp_scalar_array_node_def* array_node_def = array_node->array_nodes;
+    const struct snmp_scalar_array_node *array_node = (const struct snmp_scalar_array_node *)(const void *)instance->node;
+    const struct snmp_scalar_array_node_def *array_node_def = array_node->array_nodes;
     u32_t i = 0;
 
     while (i < array_node->array_node_count) {
@@ -118,11 +118,11 @@ snmp_scalar_array_get_instance(const u32_t *root_oid, u8_t root_oid_len, struct 
 }
 
 snmp_err_t
-snmp_scalar_array_get_next_instance(const u32_t *root_oid, u8_t root_oid_len, struct snmp_node_instance* instance)
+snmp_scalar_array_get_next_instance(const u32_t *root_oid, u8_t root_oid_len, struct snmp_node_instance *instance)
 {
-  const struct snmp_scalar_array_node* array_node = (const struct snmp_scalar_array_node*)(const void*)instance->node;
-  const struct snmp_scalar_array_node_def* array_node_def = array_node->array_nodes;
-  const struct snmp_scalar_array_node_def* result = NULL;
+  const struct snmp_scalar_array_node *array_node = (const struct snmp_scalar_array_node *)(const void *)instance->node;
+  const struct snmp_scalar_array_node_def *array_node_def = array_node->array_nodes;
+  const struct snmp_scalar_array_node_def *result = NULL;
 
   LWIP_UNUSED_ARG(root_oid);
   LWIP_UNUSED_ARG(root_oid_len);
@@ -191,30 +191,42 @@ snmp_scalar_array_get_next_instance(const u32_t *root_oid, u8_t root_oid_len, st
 }
 
 static s16_t
-snmp_scalar_array_get_value(struct snmp_node_instance* instance, void* value)
+snmp_scalar_array_get_value(struct snmp_node_instance *instance, void *value)
 {
-  const struct snmp_scalar_array_node* array_node = (const struct snmp_scalar_array_node*)(const void*)instance->node;
-  const struct snmp_scalar_array_node_def* array_node_def = (const struct snmp_scalar_array_node_def*)instance->reference.const_ptr;
+  s16_t result = -1;
+  const struct snmp_scalar_array_node *array_node = (const struct snmp_scalar_array_node *)(const void *)instance->node;
+  const struct snmp_scalar_array_node_def *array_node_def = (const struct snmp_scalar_array_node_def *)instance->reference.const_ptr;
 
-  return array_node->get_value(array_node_def, value);
+  if (array_node->get_value != NULL) {
+    result = array_node->get_value(array_node_def, value);
+  }
+  return result;
 }
 
 static snmp_err_t
-snmp_scalar_array_set_test(struct snmp_node_instance* instance, u16_t value_len, void* value)
+snmp_scalar_array_set_test(struct snmp_node_instance *instance, u16_t value_len, void *value)
 {
-  const struct snmp_scalar_array_node* array_node = (const struct snmp_scalar_array_node*)(const void*)instance->node;
-  const struct snmp_scalar_array_node_def* array_node_def = (const struct snmp_scalar_array_node_def*)instance->reference.const_ptr;
+  snmp_err_t result = SNMP_ERR_NOTWRITABLE;
+  const struct snmp_scalar_array_node *array_node = (const struct snmp_scalar_array_node *)(const void *)instance->node;
+  const struct snmp_scalar_array_node_def *array_node_def = (const struct snmp_scalar_array_node_def *)instance->reference.const_ptr;
 
-  return array_node->set_test(array_node_def, value_len, value);
+  if (array_node->set_test != NULL) {
+    result = array_node->set_test(array_node_def, value_len, value);
+  }
+  return result;
 }
 
 static snmp_err_t
-snmp_scalar_array_set_value(struct snmp_node_instance* instance, u16_t value_len, void* value)
+snmp_scalar_array_set_value(struct snmp_node_instance *instance, u16_t value_len, void *value)
 {
-  const struct snmp_scalar_array_node* array_node = (const struct snmp_scalar_array_node*)(const void*)instance->node;
-  const struct snmp_scalar_array_node_def* array_node_def = (const struct snmp_scalar_array_node_def*)instance->reference.const_ptr;
+  snmp_err_t result = SNMP_ERR_NOTWRITABLE;
+  const struct snmp_scalar_array_node *array_node = (const struct snmp_scalar_array_node *)(const void *)instance->node;
+  const struct snmp_scalar_array_node_def *array_node_def = (const struct snmp_scalar_array_node_def *)instance->reference.const_ptr;
 
-  return array_node->set_value(array_node_def, value_len, value);
+  if (array_node->set_value != NULL) {
+    result = array_node->set_value(array_node_def, value_len, value);
+  }
+  return result;
 }
 
 #endif /* LWIP_SNMP */

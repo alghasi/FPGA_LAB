@@ -19,7 +19,7 @@
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* XILINX BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* XILINX CONSORTIUM BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 * OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
@@ -561,13 +561,13 @@ XStatus init_dma(struct xemac_s *xemac)
 	/*
 	 * Disable L1 prefetch if the processor type is Cortex A53. It is
 	 * observed that the L1 prefetching for ARMv8 can cause issues while
-	 * dealing with cache memory on Rx path. On Rx path, the lwIP adapter
+     * dealing with cache memory on Rx path. On Rx path, the lwIP adapter
 	 * does a clean and invalidation of buffers (pbuf payload) before
-	 * allocating them to Rx BDs. However, there are chances that the
+     * allocating them to Rx BDs. However, there are chances that the
 	 * the same cache line may get prefetched by the time Rx data is
-	 * DMAed to the same buffer. In such cases, CPU fetches stale data from
-	 * cache memory instead of getting them from memory. To avoid such
-	 * scenarios L1 prefetch is being disabled for ARMv8. That can cause
+     * DMAed to the same buffer. In such cases, CPU fetches stale data from
+     * cache memory instead of getting them from memory. To avoid such
+     * scenarios L1 prefetch is being disabled for ARMv8. That can cause
 	 * a performance degaradation in the range of 3-5%. In tests, it is
 	 * generally observed that this performance degaradation is quite
 	 * insignificant to be really visible.
@@ -850,29 +850,6 @@ void free_onlytx_pbufs(xemacpsif_s *xemacpsif)
 			tx_pbufs_storage[index] = 0;
 		}
 	}
-}
-
-/* reset Tx and Rx DMA pointers after XEmacPs_Stop */
-void reset_dma(struct xemac_s *xemac)
-{
-	u8 txqueuenum;
-	u32_t gigeversion;
-	xemacpsif_s *xemacpsif = (xemacpsif_s *)(xemac->state);
-	XEmacPs_BdRing *txringptr = &XEmacPs_GetTxRing(&xemacpsif->emacps);
-	XEmacPs_BdRing *rxringptr = &XEmacPs_GetRxRing(&xemacpsif->emacps);
-
-	XEmacPs_BdRingPtrReset(txringptr, xemacpsif->tx_bdspace);
-	XEmacPs_BdRingPtrReset(rxringptr, xemacpsif->rx_bdspace);
-
-	gigeversion = ((Xil_In32(xemacpsif->emacps.Config.BaseAddress + 0xFC)) >> 16) & 0xFFF;
-	if (gigeversion > 2) {
-		txqueuenum = 1;
-	} else {
-		txqueuenum = 0;
-	}
-
-	XEmacPs_SetQueuePtr(&(xemacpsif->emacps), xemacpsif->emacps.RxBdRing.BaseBdAddr, 0, XEMACPS_RECV);
-	XEmacPs_SetQueuePtr(&(xemacpsif->emacps), xemacpsif->emacps.TxBdRing.BaseBdAddr, txqueuenum, XEMACPS_SEND);
 }
 
 void emac_disable_intr(void)
