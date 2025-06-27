@@ -4,3 +4,6 @@
 [submodule "ip_repo/HLS/cmplx_magnitude_cal"]
 	path = ip_repo/HLS/cmplx_magnitude_cal
 	url = https://github.com/iamhosseinali/cmplx_magnitude_cal.git
+[submodule "ip_repo/HDL/Mirror_Remover"]
+	path = ip_repo/HDL/Mirror_Remover
+	url = https://github.com/iamhosseinali/Mirror_Remover.git
