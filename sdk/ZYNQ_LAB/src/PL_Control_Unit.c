@@ -22,7 +22,7 @@ void PL_Control_Set_Fs_Cycles(u32 cycles){
 }
 
 u32 PL_Control_Get_Fs_Cycles(){
-    return PMU_PL_CONTROL_UNIT_mReadReg(Fs_CONF);
+    return  (0x7FFFFFFF & PMU_PL_CONTROL_UNIT_mReadReg(Fs_CONF));
 }
 void PL_Control_Set_Phase_Step(u32 Phase_Step){
     if((1 > Phase_Step) || ((MAX_SMPL_IN_CYCLE-1) < Phase_Step)){
@@ -42,12 +42,12 @@ void Set_Fs(u32 Fs){
         return;
     }
     u32 cycles = PL_CLK_FREQ/Fs; 
-    xil_printf("Actual reachable Fs = %d\r\n",PL_CLK_FREQ/cycles); 
+    xil_printf("Actual reachable Fs = %dHz\r\n",PL_CLK_FREQ/cycles);
     PL_Control_Set_Fs_Cycles(cycles);
 }
 
 u32 Get_Fs(void){
-    u32 temp = PL_Control_Get_Fs_Cycles; 
+    u32 temp = PL_Control_Get_Fs_Cycles();
     return (PL_CLK_FREQ/temp); 
 }
 
@@ -57,10 +57,11 @@ void Set_Sine_Wave_Frq(u32 frq){
     u32 MinFout = Fs / MAX_SMPL_IN_CYCLE; 
     u32 MaxFout = (MAX_SMPL_IN_CYCLE-1) * Fs / MAX_SMPL_IN_CYCLE; 
     if(frq < MinFout || frq > MaxFout){
-        xil_printf("Your requested freqency is out of range (%d-%d)\r\nThis is because Fs = %d\r\n",MinFout,MaxFout,Fs);
+        xil_printf("Your requested frequency is out of range (%d-%d)\r\nThis is because Fs = %dHz\r\n",MinFout,MaxFout,Fs);
         return;
     }
     u32 Phase_Step = MAX_SMPL_IN_CYCLE * frq / Fs; 
+    xil_printf("Phase Step = %d\r\nActual reachable frequency = %dHz\r\n",Phase_Step,Phase_Step * Fs / MAX_SMPL_IN_CYCLE);
     PL_Control_Set_Phase_Step(Phase_Step);
 }
 

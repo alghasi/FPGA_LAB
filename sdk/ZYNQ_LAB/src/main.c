@@ -167,6 +167,9 @@ static void udp_recv_perf_traffic(void *arg, struct udp_pcb *tpcb,
 			memcmp(TxBufferPtr,START_COMMAND,strlen(START_COMMAND)) == 0)
 	{
 		recv_data_ready = 1;
+		Set_Fs(10000000);
+		Set_Sine_Wave_Frq(40000);
+		PL_Control_Set_Logging_State(1);
 	}
 	/* STOP_COMMAND */
 	else if((p_rcv->len >= strlen(STOP_COMMAND)) &&
