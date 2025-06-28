@@ -27,10 +27,20 @@
 #define PLATFORM_ZYNQ
  
 /* Definitions for sleep timer configuration */
-#define XSLEEP_TIMER_IS_DEFAULT_TIMER
  
  
 /******************************************************************/
+/* Definitions for driver PL_CONTROL_UNIT */
+#define XPAR_PL_CONTROL_UNIT_NUM_INSTANCES 1
+
+/* Definitions for peripheral PL_CONTROL_UNIT_0 */
+#define XPAR_PL_CONTROL_UNIT_0_DEVICE_ID 0
+#define XPAR_PL_CONTROL_UNIT_0_S00_AXI_BASEADDR 0x43C00000
+#define XPAR_PL_CONTROL_UNIT_0_S00_AXI_HIGHADDR 0x43C0FFFF
+
+
+/******************************************************************/
+
 /* Definitions for driver AXIDMA */
 #define XPAR_XAXIDMA_NUM_INSTANCES 1
 
