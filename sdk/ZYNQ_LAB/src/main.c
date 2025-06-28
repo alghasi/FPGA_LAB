@@ -94,6 +94,8 @@ static struct udp_pcb *pcb;
 ip_addr_t DEST_IP_ADDR;
 u8 *TxBufferPtr;
 u32 rcv_data;
+#define FS_COMM_IDF			0x55
+#define FRQ_COMM_IDF		0xAA
 const char START_COMMAND[] = "StartLog";
 const char STOP_COMMAND[] = "StopLog";
 u8 WRONG_RE[]={"WRONG COMMAND!"};
@@ -167,15 +169,40 @@ static void udp_recv_perf_traffic(void *arg, struct udp_pcb *tpcb,
 			memcmp(TxBufferPtr,START_COMMAND,strlen(START_COMMAND)) == 0)
 	{
 		recv_data_ready = 1;
-		Set_Fs(10000000);
-		Set_Sine_Wave_Frq(40000);
 		PL_Control_Set_Logging_State(1);
 	}
+	/*TODO*/
 	/* STOP_COMMAND */
-	else if((p_rcv->len >= strlen(STOP_COMMAND)) &&
-			memcmp(TxBufferPtr,STOP_COMMAND,strlen(STOP_COMMAND)) == 0)
+	// else if((p_rcv->len >= strlen(STOP_COMMAND)) &&
+	// 		memcmp(TxBufferPtr,STOP_COMMAND,strlen(STOP_COMMAND)) == 0)
+	// {
+	// 	recv_data_ready = 0;
+	// }
+	
+	/*Fs setting*/
+	else if((p_rcv->len == 5) && (*TxBufferPtr == FS_COMM_IDF))
 	{
-		recv_data_ready = 1;
+		uint32_t Fs;
+		
+		/*Extracting and setting data in Fs function*/
+		memcpy(&Fs,TxBufferPtr+1,sizeof(Fs));
+		Set_Fs(Fs);
+		
+		/*ACK*/
+		UDP_SEND((u8*)FS_COMM_IDF,sizeof(FS_COMM_IDF));
+	}
+	
+	/*sine wave frequency setting*/
+	else if((p_rcv->len == 5) && (*TxBufferPtr == FRQ_COMM_IDF))
+	{
+		uint32_t Frq;
+		
+		/*Extracting and setting data in Fs function*/
+		memcpy(&Frq,TxBufferPtr+1,sizeof(Frq));
+		Set_Sine_Wave_Frq(Frq);
+		
+		/*ACK*/
+		UDP_SEND((u8*)FRQ_COMM_IDF,sizeof(FRQ_COMM_IDF));
 	}
 	/*Unknown Command*/
 	else printf("Unknown command received!\r\n");
