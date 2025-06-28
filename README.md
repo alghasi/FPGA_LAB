@@ -1,8 +1,4 @@
-# FPGA Lab 
-This project is following two purposes: 
-1: An example project for ppl that wanna start with [vivado-git](https://github.com/iamhosseinali/vivado-git)
-2: An example project for ppl that wanna start with ZYNQ7000, HLS and custom IPs. 
-## FPGA Lab
+# FPGA Lab
 This project serves two primary purposes:
 
 **To provide a starter example for using [vivado-git](https://github.com/iamhosseinali/vivado-git).**
