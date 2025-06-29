@@ -1,0 +1,7 @@
+//arch = zynq; split = false; format = BIN
+the_ROM_image:
+{
+	[bootloader]D:\FPGA_LAB\sdk\fsbl\Debug\fsbl.elf
+	D:\FPGA_LAB\sdk\design_1_wrapper_hw_platform_0\design_1_wrapper.bit
+	D:\FPGA_LAB\sdk\ZYNQ_LAB\Debug\ZYNQ_LAB.elf
+}
